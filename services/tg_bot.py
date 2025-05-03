@@ -75,3 +75,20 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Ошибка при отправке сообщения: {e}")
             return False
+
+    def send_error_message(self, error_text: str) -> bool:
+        """
+        Отправляет сообщение об ошибке пользователю
+
+        Args:
+            error_text: Текст ошибки
+
+        Returns:
+            True в случае успеха, False в случае ошибки
+        """
+        try:
+            error_message = f"🚨 <b>КРИТИЧЕСКАЯ ОШИБКА:</b> 🚨\n\n{error_text}"
+            return self.send_message(error_message)
+        except Exception as e:
+            logger.error(f"Ошибка при отправке сообщения об ошибке: {e}")
+            return False

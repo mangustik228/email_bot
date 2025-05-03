@@ -1,7 +1,6 @@
 from loguru import logger
 from config import settings
-from services.email_manager import EmailManager
-
+from services import EmailManager, TelegramBot
 
 def main():
     """Основная функция приложения"""
@@ -10,13 +9,21 @@ def main():
     # Создаем менеджер для обработки почты
     manager = EmailManager(settings)
 
+    # Создаем объект Telegram бота для отправки уведомлений об ошибках
+    tg_bot = TelegramBot(token=settings.bot.token, client_id=settings.bot.client_id)
+    tg_bot.start()
+
     try:
         # Запускаем менеджер в бесконечном цикле
         manager.start()
     except KeyboardInterrupt:
         logger.info("Работа скрипта остановлена пользователем")
     except Exception as e:
-        logger.exception(f"Критическая ошибка: {e}")
+        error_msg = f"Критическая ошибка: {str(e)}"
+        logger.exception(error_msg)
+
+        # Отправляем уведомление об ошибке через Telegram
+        tg_bot.send_error_message(error_msg)
     finally:
         # В случае ошибки убеждаемся, что все соединения закрыты
         manager.stop()

@@ -26,25 +26,45 @@ class EmailManager:
             config: Конфигурация из config.py
         """
         self.config = config
-        self.imap_client = ImapClient(
+        self.google_imap_client  = ImapClient(
             server=config.google.server,
             port=config.google.port,
             email_address=config.google.email,
             password=config.google.password
+        )
+        self.yandex_imap_client = ImapClient(
+            server=config.yandex.server,
+            port=config.yandex.port,
+            email_address=config.yandex.email,
+            password=config.yandex.password
         )
         debug = config.MODE == "DEV"
         self.gemini_client = GeminiClient(api_key=config.gemini.api_key, debug=debug)
         self.tg_bot = TelegramBot(token=config.bot.token, client_id=config.bot.client_id)
         self.tg_client = TelegramClient(config.tg_client.api_id, config.tg_client.api_hash, config.tg_client.bot_name, config.tg_client.session_name)
         self.is_running = False
+        self.current_provider = "yandex"
+
 
     def start(self):
         """Запуск обработки почты в цикле"""
         logger.info("Запуск менеджера обработки почты")
 
-        # Подключаемся к IMAP серверу
-        if not self.imap_client.connect():
-            logger.error("Не удалось подключиться к IMAP серверу. Завершение работы.")
+        # Подключаемся к Google IMAP серверу
+        if not self.google_imap_client.connect():
+            logger.error("Не удалось подключиться к Google IMAP серверу.")
+        else:
+            logger.success("Подключение к Google IMAP серверу установлено.")
+
+        # Подключаемся к Yandex IMAP серверу
+        if not self.yandex_imap_client.connect():
+            logger.error("Не удалось подключиться к Yandex IMAP серверу.")
+        else:
+            logger.success("Подключение к Yandex IMAP серверу установлено.")
+
+        # Если ни к одному серверу не удалось подключиться, завершаем работу
+        if not hasattr(self, 'google_imap_client') and not hasattr(self, 'yandex_imap_client'):
+            logger.error("Не удалось подключиться ни к одному IMAP серверу. Завершение работы.")
             return
 
         # В будущем подключаем другие сервисы
@@ -55,11 +75,25 @@ class EmailManager:
 
         try:
             while self.is_running:
-                self.process_emails()
+                # Проверяем текущий провайдер
+                if self.current_provider == "google" and hasattr(self, 'google_imap_client'):
+                    logger.info("Проверка почты Google...")
+                    self.process_google_emails()
+                    self.current_provider = "yandex"  # Переключаемся на Yandex
+                elif self.current_provider == "yandex" and hasattr(self, 'yandex_imap_client'):
+                    logger.info("Проверка почты Yandex...")
+                    self.process_yandex_emails()
+                    self.current_provider = "google"  # Переключаемся на Google
+                else:
+                    # Если текущий провайдер недоступен, пробуем другой
+                    if self.current_provider == "google":
+                        self.current_provider = "yandex"
+                    else:
+                        self.current_provider = "google"
 
-                # Ожидаем 60 секунд до следующей проверки
-                logger.info("Ожидание 60 секунд до следующей проверки...")
-                time.sleep(60)
+                # Ожидаем 30 секунд до следующей проверки
+                logger.info(f"Ожидание 30 секунд до следующей проверки ({self.current_provider})...")
+                time.sleep(30)
         except KeyboardInterrupt:
             logger.info("Работа скрипта остановлена пользователем")
         except Exception as e:
@@ -67,34 +101,54 @@ class EmailManager:
         finally:
             self.stop()
 
+    def process_google_emails(self):
+        """Обработка непрочитанных писем из Google почты"""
+        if not hasattr(self, 'google_imap_client'):
+            logger.error("Google IMAP клиент не инициализирован")
+            return
+
+        self._process_emails(self.google_imap_client, "gmail")
+
+    def process_yandex_emails(self):
+        """Обработка непрочитанных писем из Yandex почты"""
+        if not hasattr(self, 'yandex_imap_client'):
+            logger.error("Yandex IMAP клиент не инициализирован")
+            return
+
+        self._process_emails(self.yandex_imap_client, "yandex")
+
     def stop(self):
         """Остановка всех сервисов"""
         self.is_running = False
 
-        # Закрываем соединение с IMAP
-        if hasattr(self, 'imap_client'):
-            self.imap_client.disconnect()
+        # Закрываем соединение с Google IMAP
+        if hasattr(self, 'google_imap_client'):
+            self.google_imap_client.disconnect()
 
-        # В будущем отключаем другие сервисы
-        # if hasattr(self, 'tg_bot'):
-        #     self.tg_bot.stop()
-        # if hasattr(self, 'tg_client'):
-        #     self.tg_client.disconnect()
+        # Закрываем соединение с Yandex IMAP
+        if hasattr(self, 'yandex_imap_client'):
+            self.yandex_imap_client.disconnect()
 
         logger.info("Менеджер обработки почты остановлен")
 
-    def process_emails(self):
-        """Обработка непрочитанных писем"""
-        logger.info("Начало обработки непрочитанных писем")
+    def _process_emails(self, imap_client, provider: str):
+        """
+        Обработка непрочитанных писем
+
+        Args:
+            imap_client: IMAP клиент для обработки почты
+            provider: Провайдер почты ("gmail" или "yandex")
+        """
+        logger.info(f"Начало обработки непрочитанных писем {provider}")
 
         # Выбираем папку "Входящие"
-        if not self.imap_client.select_mailbox("INBOX"):
-            logger.error("Не удалось выбрать папку INBOX")
+        if not imap_client.select_mailbox("INBOX"):
+            logger.error(f"Не удалось выбрать папку INBOX для {provider}")
             return
 
         # Получаем список непрочитанных писем
-        email_ids = self.imap_client.get_unseen_emails_ids()
-        logger.info(f"Найдено {len(email_ids)} непрочитанных писем")
+        email_ids = imap_client.get_unseen_emails_ids()
+        logger.info(f"Найдено {len(email_ids)} непрочитанных писем в {provider}")
 
         if not email_ids:
             return
@@ -102,30 +156,32 @@ class EmailManager:
         # Обрабатываем каждое непрочитанное письмо
         for email_id in email_ids:
             # Получаем письмо по ID
-            email_data = self.imap_client.get_email_by_id(email_id)
+            email_data = imap_client.get_email_by_id(email_id)
 
             if not email_data:
-                logger.warning(f"Не удалось получить письмо с ID {email_id}")
+                logger.warning(f"Не удалось получить письмо с ID {email_id} из {provider}")
                 continue
 
             # Обрабатываем письмо
-            self._process_single_email(email_data)
+            self._process_single_email(email_data, provider)
 
             # Помечаем как прочитанное
-            self.imap_client.mark_as_read(email_id)
+            imap_client.mark_as_read(email_id)
 
 
-    def _process_single_email(self, email_data: Dict[str, Any]):
+    def _process_single_email(self, email_data: Dict[str, Any], provider: str):
         """
         Обработка одного письма
 
         Args:
             email_data: данные письма
+            provider: провайдер почты ("gmail" или "yandex")
         """
         # Очищаем данные письма от HTML и форматируем
         from .html_cleaner import EmailCleaner
         cleaned_email = EmailCleaner.clean_email_data(email_data)
         subject = cleaned_email.get('subject', "Без темы")
+
         # Выполняем классификацию письма через Gemini
         classification = None
         if "pioner" in email_data["from"]:
@@ -137,11 +193,11 @@ class EmailManager:
                 body=cleaned_email['text_content']
             )
 
-        logger.info(f"Письмо классифицировано как: {classification}")
+        logger.info(f"Письмо из {provider} классифицировано как: {classification}")
 
         if classification in [EmailCategory.MESSAGE, EmailCategory.OTHER, EmailCategory.SUPPORT]:
-            self.tg_bot.send_message(self._create_alert_message(cleaned_email, email_data))
-            logger.info(f"Отправлено уведомление о письме: {subject}")
+            self.tg_bot.send_message(self._create_alert_message(cleaned_email, email_data, provider))
+            logger.info(f"Отправлено уведомление о письме из {provider}: {subject}")
         elif classification == EmailCategory.PAYMENT:
             payment_data = self.gemini_client.extract_payment_data(subject, cleaned_email["text_content"])
             sender = cleaned_email.get('sender_name', email_data.get("from", "Неизвестный отправитель"))
@@ -150,7 +206,7 @@ class EmailManager:
             ... # TODO Надо поискать кнопку отписать и попытаться отписаться
         else: # classification == EmailCategory.IMPORTANT
             ... # Оставим место, вдруг потом захочется добавить логики, пока ее не будет
-        logger.info(f"Письмо обработано: {cleaned_email['subject']}")
+        logger.info(f"Письмо из {provider} обработано: {cleaned_email['subject']}")
         return True  # Помечаем как прочитанное
 
 

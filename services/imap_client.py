@@ -45,10 +45,25 @@ class ImapClient:
         """Закрытие соединения с IMAP сервером"""
         if self.imap:
             try:
-                self.imap.logout()
-                logger.info("Соединение с IMAP сервером закрыто")
+                # Проверяем, активно ли соединение, перед его закрытием
+                # Пробуем выполнить простую команду noop
+                try:
+                    status, _ = self.imap.noop()
+                    if status == 'OK':
+                        # Соединение активно, можно закрывать
+                        self.imap.logout()
+                        logger.info("Соединение с IMAP сервером закрыто")
+                    else:
+                        logger.info("Соединение с IMAP сервером уже было закрыто")
+                except Exception:
+                    # Если команда вызвала ошибку, значит соединение уже не активно
+                    logger.info("Соединение с IMAP сервером уже не активно")
+                    # Устанавливаем imap в None, чтобы избежать повторных попыток закрытия
+                    self.imap = None
             except Exception as e:
                 logger.error(f"Ошибка при закрытии соединения: {e}")
+                # Устанавливаем imap в None, чтобы избежать повторных попыток закрытия
+                self.imap = None
 
 
     def select_mailbox(self, mailbox: str = 'INBOX') -> bool:

@@ -7,6 +7,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 load_dotenv()
 
+class Yandex(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="YANDEX_")
+    port: int
+    email: EmailStr
+    server: str
+    password: str
+
+
+
 class Google(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="GOOGLE_")
     port: int
@@ -33,6 +42,7 @@ class Gemini(BaseSettings):
 
 class Settings(BaseSettings):
     google: Google = Google()        # type: ignore
+    yandex: Yandex = Yandex()        # type: ignore
     gemini: Gemini = Gemini()        # type: ignore
     tg_client: TgClient = TgClient() # type: ignore
     bot: Bot = Bot()                 # type: ignore

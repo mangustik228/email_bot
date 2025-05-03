@@ -1,0 +1,12 @@
+services:
+  email-processor:
+    build: .
+    container_name: email-processor
+    restart: unless-stopped
+    volumes:
+      # Для сохранения сессии Telegram между перезапусками
+      - ./sessions:/app/sessions
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Moscow

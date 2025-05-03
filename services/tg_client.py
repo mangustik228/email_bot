@@ -69,7 +69,7 @@ class TelegramClient:
 
         try:
             # Используем контекстный менеджер для автоматического подключения и отключения
-            app = Client(self.session_name, self.api_id, self.api_hash)
+            app = Client(f"sessions/{self.session_name}", self.api_id, self.api_hash)
 
             with app:
                 app.send_message(recipient, text) # type: ignore

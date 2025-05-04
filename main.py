@@ -20,7 +20,7 @@ def main():
     except KeyboardInterrupt:
         logger.info("Работа скрипта остановлена пользователем")
     except Exception as e:
-        error_msg = f"Критическая ошибка: {str(e)}"
+        error_msg = f"Критическая ошибка при работе приложения: {str(e)}"
         logger.exception(error_msg)
 
         # Отправляем уведомление об ошибке через Telegram

@@ -12,6 +12,7 @@ def main():
     # Создаем объект Telegram бота для отправки уведомлений об ошибках
     tg_bot = TelegramBot(token=settings.bot.token, client_id=settings.bot.client_id)
     tg_bot.start()
+    tg_bot.send_hello_message("Запустился парсер почты")
 
     try:
         # Запускаем менеджер в бесконечном цикле

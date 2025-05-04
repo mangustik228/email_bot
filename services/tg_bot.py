@@ -92,3 +92,10 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Ошибка при отправке сообщения об ошибке: {e}")
             return False
+
+    def send_hello_message(self, msg: str):
+        try:
+            return self.send_message(msg)
+        except Exception as e:
+            logger.error(f'Ошибка при отправке приветственного сообщения')
+            return False

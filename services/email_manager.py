@@ -195,7 +195,7 @@ class EmailManager:
 
         logger.info(f"Письмо из {provider} классифицировано как: {classification}")
 
-        if classification in [EmailCategory.MESSAGE, EmailCategory.OTHER, EmailCategory.SUPPORT]:
+        if classification in [EmailCategory.MESSAGE, EmailCategory.OTHER, EmailCategory.SUPPORT, EmailCategory.ALERT]:
             self.tg_bot.send_message(self._create_alert_message(cleaned_email, email_data, provider))
             logger.info(f"Отправлено уведомление о письме из {provider}: {subject}")
         elif classification == EmailCategory.PAYMENT:

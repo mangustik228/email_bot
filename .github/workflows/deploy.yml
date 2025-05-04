@@ -1,0 +1,21 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: deployer
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/email_bot
+            git pull || git clone https://github.com/${{ github.repository }}.git .
+            docker compose up -d --build

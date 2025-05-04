@@ -4,7 +4,7 @@ from services import EmailManager, TelegramBot
 
 def main():
     """Основная функция приложения"""
-    logger.info("Запуск приложения для обработки почты")
+    logger.info("Запуск приложения для обработки почты с Yandex & Google")
 
     # Создаем менеджер для обработки почты
     manager = EmailManager(settings)

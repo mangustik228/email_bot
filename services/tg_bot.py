@@ -59,7 +59,8 @@ class TelegramBot:
             data = {
                 "chat_id": self.client_id,
                 "text": text,
-                "parse_mode": "HTML"
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True
             }
 
             # Создаем новое соединение для каждого запроса

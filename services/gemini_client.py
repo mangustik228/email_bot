@@ -115,8 +115,6 @@ class GeminiClient:
         response_json = json.loads(cleaned_response)
         return response_json
 
-        return category_str
-
 
     def _generate_content(self, prompt: str, is_payment: bool=False) -> Optional[str]:
         """
@@ -144,7 +142,7 @@ class GeminiClient:
                     reasoning = response_json.get("reasoning", "")
                     # Логируем результат с рассуждением
                     logger.debug(f'Результат классификации: {category_str}')
-                    logger.debug(f'Причина: {reasoning}')
+                    logger.info(f'Причина: {reasoning}')
                     return category_str
                 else:
                     return response_text

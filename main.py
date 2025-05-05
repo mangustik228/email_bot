@@ -1,6 +1,14 @@
 from loguru import logger
 from config import settings
 from services import EmailManager, TelegramBot
+import os
+
+logger.remove()
+
+# Добавляем вывод в файл
+logger.add("logs/app.log", rotation="10 MB", retention="7 days", compression="zip", level="INFO")
+
+
 
 def main():
     """Основная функция приложения"""

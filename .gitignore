@@ -5,3 +5,4 @@ tests/src/letters.json
 __pycache__
 .pytest_cache
 sessions
+logs

@@ -92,7 +92,7 @@ class EmailManager:
                         self.current_provider = "google"
 
                 # Ожидаем 30 секунд до следующей проверки
-                logger.info(f"Ожидание 30 секунд до следующей проверки ({self.current_provider})...")
+                logger.debug(f"Ожидание 30 секунд до следующей проверки ({self.current_provider})...")
                 time.sleep(30)
         except KeyboardInterrupt:
             logger.info("Работа скрипта остановлена пользователем")
@@ -184,8 +184,12 @@ class EmailManager:
 
         # Выполняем классификацию письма через Gemini
         classification = None
+
         if "pioner" in email_data["from"]:
             classification = EmailCategory.MESSAGE
+
+        if "email@business.yandex.ru" in email_data["from"]:
+            classification = EmailCategory.ALERT
 
         if not classification:
             classification = self.gemini_client.classify_email(

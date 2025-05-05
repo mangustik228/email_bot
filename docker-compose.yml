@@ -6,6 +6,7 @@ services:
     volumes:
       # Для сохранения сессии Telegram между перезапусками
       - ./sessions:/app/sessions
+      - ./logs:/app/logs
     env_file:
       - .env
     environment:

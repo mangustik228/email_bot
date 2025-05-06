@@ -76,6 +76,10 @@ class ImapClient:
         Returns:
             bool: True если выбор успешен, иначе False
         """
+        if not self.ensure_connection():
+            logger.error("Не удалось установить соединение с IMAP сервером")
+            return False
+
         if not self.imap:
             logger.error("Нет соединения с IMAP сервером")
             return False
@@ -265,3 +269,29 @@ class ImapClient:
         except Exception as e:
             logger.error(f"Ошибка при пометке письма как прочитанное: {e}")
             return False
+
+
+    def ensure_connection(self) -> bool:
+        """
+        Проверяет соединение с IMAP сервером и восстанавливает его при необходимости
+
+        Returns:
+            bool: True если соединение активно или было успешно восстановлено, иначе False
+        """
+        if not self.imap:
+            logger.info("Соединение с IMAP не установлено. Выполняю подключение...")
+            return self.connect()
+
+        try:
+            # Проверяем соединение простой командой noop
+            status, _ = self.imap.noop()
+            if status == 'OK':
+                return True
+            else:
+                logger.warning("IMAP соединение неактивно. Переподключаюсь...")
+                self.disconnect()
+                return self.connect()
+        except Exception as e:
+            logger.warning(f"Ошибка проверки IMAP соединения: {e}. Переподключаюсь...")
+            self.disconnect()
+            return self.connect()

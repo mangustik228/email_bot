@@ -1,7 +1,7 @@
 from loguru import logger
+
 from config import settings
 from services import EmailManager, TelegramBot
-import os
 
 logger.remove()
 

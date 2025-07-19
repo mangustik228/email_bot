@@ -2,6 +2,7 @@
 Клиент для взаимодействия с Google Gemini API
 для классификации электронных писем
 """
+
 import json
 import time
 from typing import Optional
@@ -10,14 +11,16 @@ from google import genai
 from loguru import logger
 
 from schemas import EmailCategory
+
 from .prompt_classification import PROMT_CLASSIFICATION
+
 
 class GeminiClient:
     """Клиент для работы с Google Gemini API"""
 
     # Модель для классификации
     # MODEL = "gemini-2.0-flash"
-    MODEL = "gemini-2.5-flash-preview-04-17"
+    MODEL = "gemini-2.5-pro"
 
     def __init__(self, api_key: str, debug: bool):
         """
@@ -65,7 +68,6 @@ class GeminiClient:
             logger.error(f"Ошибка при классификации письма: {e}")
             return EmailCategory.OTHER
 
-
     @property
     def result_format(self):
         if self.debug:
@@ -99,7 +101,6 @@ class GeminiClient:
     {truncated_body}
         """
 
-
     def _clean_dirty_json(self, response_text: str) -> dict:
         cleaned_response = response_text.strip()
 
@@ -110,13 +111,14 @@ class GeminiClient:
             if end_marker > 3:  # Если нашли закрывающий блок
                 # Извлекаем только содержимое между маркерами, удаляя ```json\n в начале
                 # и ``` в конце
-                cleaned_response = cleaned_response[cleaned_response.find("\n", 3)+1:end_marker].strip()
+                cleaned_response = cleaned_response[
+                    cleaned_response.find("\n", 3) + 1 : end_marker
+                ].strip()
         # Пытаемся распарсить JSON
         response_json = json.loads(cleaned_response)
         return response_json
 
-
-    def _generate_content(self, prompt: str, is_payment: bool=False) -> Optional[str]:
+    def _generate_content(self, prompt: str, is_payment: bool = False) -> Optional[str]:
         """
         Отправляет запрос к API Gemini с помощью официальной библиотеки
 
@@ -134,15 +136,19 @@ class GeminiClient:
                 )
                 if is_payment:
                     return response.text
-                if not (response_text := response.text if hasattr(response, 'text') else None):
+                if not (
+                    response_text := response.text
+                    if hasattr(response, "text")
+                    else None
+                ):
                     return
                 if self.debug:
                     response_json = self._clean_dirty_json(response_text)
                     category_str = response_json.get("category", "").lower()
                     reasoning = response_json.get("reasoning", "")
                     # Логируем результат с рассуждением
-                    logger.debug(f'Результат классификации: {category_str}')
-                    logger.info(f'Причина: {reasoning}')
+                    logger.debug(f"Результат классификации: {category_str}")
+                    logger.info(f"Причина: {reasoning}")
                     return category_str
                 else:
                     return response_text
@@ -150,7 +156,7 @@ class GeminiClient:
             except Exception as e:
                 logger.warning(f"Ошибка при запросе к Gemini API: {e}")
                 time.sleep(3)
-        logger.error(f'Не получилось с 5 попыток получить ответ от Gemini')
+        logger.error(f"Не получилось с 5 попыток получить ответ от Gemini")
 
     def _extract_category_from_response(self, response: str) -> EmailCategory:
         """
@@ -170,9 +176,10 @@ class GeminiClient:
         try:
             return EmailCategory(cleaned_text)
         except Exception as e:
-            logger.warning(f"{e} Не удалось определить категорию из ответа: '{cleaned_text}'")
+            logger.warning(
+                f"{e} Не удалось определить категорию из ответа: '{cleaned_text}'"
+            )
             return EmailCategory.OTHER
-
 
     def extract_payment_data(self, subject: str, body: str) -> dict:
         """
@@ -194,10 +201,12 @@ class GeminiClient:
             # Отправляем запрос к API
             response = self._generate_content(prompt, is_payment=True)
 
-            logger.debug(f'{response = }')
+            logger.debug(f"{response = }")
 
             if not response:
-                logger.error("Пустой ответ от Gemini API при извлечении данных о платеже")
+                logger.error(
+                    "Пустой ответ от Gemini API при извлечении данных о платеже"
+                )
                 return {}
 
             # Извлекаем данные из ответа

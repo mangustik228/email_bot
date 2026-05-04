@@ -20,7 +20,7 @@ class GeminiClient:
 
     # Модель для классификации
     # MODEL = "gemini-2.0-flash"
-    MODEL = "gemini-2.5-pro"
+    MODEL = "gemini-3-flash-preview"
 
     def __init__(self, api_key: str, debug: bool):
         """

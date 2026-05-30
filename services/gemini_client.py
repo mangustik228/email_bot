@@ -20,7 +20,7 @@ class GeminiClient:
 
     # Модель для классификации
     # MODEL = "gemini-2.0-flash"
-    MODEL = "gemini-3-flash-preview"
+    MODEL = "gemini-3.1-flash-lite"
 
     def __init__(self, api_key: str, debug: bool):
         """
@@ -156,7 +156,7 @@ class GeminiClient:
             except Exception as e:
                 logger.warning(f"Ошибка при запросе к Gemini API: {e}")
                 time.sleep(3)
-        logger.error(f"Не получилось с 5 попыток получить ответ от Gemini")
+        logger.error("Не получилось с 5 попыток получить ответ от Gemini")
 
     def _extract_category_from_response(self, response: str) -> EmailCategory:
         """

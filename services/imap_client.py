@@ -1,14 +1,23 @@
 # services/imap_client.py
-import imaplib
 import email
+import imaplib
 from email.header import decode_header
-from typing import List, Tuple, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
 from loguru import logger
+
 
 class ImapClient:
     """Клиент для работы с IMAP-сервером"""
 
-    def __init__(self, server: str, port: int, email_address: str, password: str):
+    def __init__(
+        self,
+        server: str,
+        port: int,
+        email_address: str,
+        password: str,
+        timeout: int = 600,
+    ):
         """
         Инициализация IMAP клиента
 
@@ -17,11 +26,13 @@ class ImapClient:
             port: порт IMAP сервера
             email_address: адрес электронной почты
             password: пароль от почты
+            timeout: таймаут сетевых операций в секундах (по умолчанию 600)
         """
         self.server = server
         self.port = port
         self.email_address = email_address
         self.password = password
+        self.timeout = timeout
         self.imap = None
 
     def connect(self) -> bool:
@@ -32,14 +43,16 @@ class ImapClient:
             bool: True если соединение успешно, иначе False
         """
         try:
-            self.imap = imaplib.IMAP4_SSL(self.server, self.port)
+            self.imap = imaplib.IMAP4_SSL(self.server, self.port, timeout=self.timeout)
+            self.imap.socket().settimeout(self.timeout)
             self.imap.login(self.email_address, self.password)
-            logger.success(f"Успешно подключились к {self.server} как {self.email_address}")
+            logger.success(
+                f"Успешно подключились к {self.server} как {self.email_address}"
+            )
             return True
         except Exception as e:
             logger.error(f"Ошибка подключения к IMAP серверу: {e}")
             return False
-
 
     def disconnect(self) -> None:
         """Закрытие соединения с IMAP сервером"""
@@ -49,7 +62,7 @@ class ImapClient:
                 # Пробуем выполнить простую команду noop
                 try:
                     status, _ = self.imap.noop()
-                    if status == 'OK':
+                    if status == "OK":
                         # Соединение активно, можно закрывать
                         self.imap.logout()
                         logger.info("Соединение с IMAP сервером закрыто")
@@ -65,8 +78,7 @@ class ImapClient:
                 # Устанавливаем imap в None, чтобы избежать повторных попыток закрытия
                 self.imap = None
 
-
-    def select_mailbox(self, mailbox: str = 'INBOX') -> bool:
+    def select_mailbox(self, mailbox: str = "INBOX") -> bool:
         """
         Выбор почтового ящика (папки) для дальнейшей работы
 
@@ -86,7 +98,7 @@ class ImapClient:
 
         try:
             response, data = self.imap.select(mailbox)
-            if response != 'OK' or not data[0]:
+            if response != "OK" or not data[0]:
                 logger.error(f"Не удалось выбрать папку {mailbox}: {response}")
                 return False
             logger.info(f"Выбрана папка {mailbox}, {data[0].decode()} писем")
@@ -107,8 +119,8 @@ class ImapClient:
             return []
 
         try:
-            response, data = self.imap.search(None, 'UNSEEN')
-            if response != 'OK':
+            response, data = self.imap.search(None, "UNSEEN")
+            if response != "OK":
                 logger.error(f"Не удалось найти непрочитанные письма: {response}")
                 return []
 
@@ -135,20 +147,20 @@ class ImapClient:
             return None
 
         try:
-            response, msg_data = self.imap.fetch(email_id, '(RFC822)')
-            if response != 'OK' or not msg_data[0]:
+            response, msg_data = self.imap.fetch(email_id, "(RFC822)")
+            if response != "OK" or not msg_data[0]:
                 logger.error(f"Не удалось получить письмо с ID {email_id}: {response}")
                 return None
 
             # Парсим письмо
             raw_email = msg_data[0][1]
-            msg = email.message_from_bytes(raw_email) # type: ignore
+            msg = email.message_from_bytes(raw_email)  # type: ignore
 
             # Декодируем тему
-            subject = self._decode_header(msg.get('Subject', ''))
+            subject = self._decode_header(msg.get("Subject", ""))
 
             # Получаем отправителя
-            from_addr = self._decode_header(msg.get('From', ''))
+            from_addr = self._decode_header(msg.get("From", ""))
 
             # Получаем тело письма (текст и HTML)
             text_body, html_body = self._get_email_body(msg)
@@ -156,12 +168,12 @@ class ImapClient:
             logger.info(f"Получено письмо: {subject} от {from_addr}")
 
             return {
-                'id': email_id,
-                'subject': subject,
-                'from': from_addr,
-                'text_body': text_body,
-                'html_body': html_body,
-                'raw_message': msg
+                "id": email_id,
+                "subject": subject,
+                "from": from_addr,
+                "text_body": text_body,
+                "html_body": html_body,
+                "raw_message": msg,
             }
         except Exception as e:
             logger.error(f"Ошибка при получении письма с ID {email_id}: {e}")
@@ -189,7 +201,7 @@ class ImapClient:
                     if encoding:
                         part = part.decode(encoding)
                     else:
-                        part = part.decode('utf-8', errors='replace')
+                        part = part.decode("utf-8", errors="replace")
                 result += str(part)
 
             return result
@@ -222,21 +234,27 @@ class ImapClient:
 
                     if content_type == "text/plain":
                         try:
-                            body = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                            body = part.get_payload(decode=True).decode(
+                                "utf-8", errors="replace"
+                            )
                             text_body = body
                         except Exception as e:
                             logger.error(f"Ошибка декодирования текстового тела: {e}")
 
                     elif content_type == "text/html":
                         try:
-                            body = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                            body = part.get_payload(decode=True).decode(
+                                "utf-8", errors="replace"
+                            )
                             html_body = body
                         except Exception as e:
                             logger.error(f"Ошибка декодирования HTML тела: {e}")
             else:
                 content_type = msg.get_content_type()
                 try:
-                    body = msg.get_payload(decode=True).decode('utf-8', errors='replace')
+                    body = msg.get_payload(decode=True).decode(
+                        "utf-8", errors="replace"
+                    )
                     if content_type == "text/plain":
                         text_body = body
                     elif content_type == "text/html":
@@ -263,13 +281,12 @@ class ImapClient:
             return False
 
         try:
-            self.imap.store(email_id, '+FLAGS', '\\Seen')
+            self.imap.store(email_id, "+FLAGS", "\\Seen")
             logger.info(f"Письмо {email_id} помечено как прочитанное")
             return True
         except Exception as e:
             logger.error(f"Ошибка при пометке письма как прочитанное: {e}")
             return False
-
 
     def ensure_connection(self) -> bool:
         """
@@ -285,7 +302,7 @@ class ImapClient:
         try:
             # Проверяем соединение простой командой noop
             status, _ = self.imap.noop()
-            if status == 'OK':
+            if status == "OK":
                 return True
             else:
                 logger.warning("IMAP соединение неактивно. Переподключаюсь...")

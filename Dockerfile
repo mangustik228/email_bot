@@ -13,9 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем остальные файлы проекта
 COPY . .
 
-# Создаем пользователя без прав администратора для запуска приложения
-RUN useradd -m appuser
-USER appuser
+# Пользователь задаётся в рантайме через docker-compose (user: APP_UID:APP_GID),
+# чтобы владелец bind-mount'ов на хосте совпадал с UID процесса в контейнере.
 
 # Запускаем приложение
 CMD ["python", "main.py"]

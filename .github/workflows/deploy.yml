@@ -18,4 +18,5 @@ jobs:
           script: |
             cd /opt/email_bot
             git pull || git clone https://github.com/${{ github.repository }}.git .
-            docker compose up -d --build
+            mkdir -p logs sessions
+            APP_UID=$(id -u) APP_GID=$(id -g) docker compose up -d --build

@@ -1,6 +1,7 @@
 services:
   email-processor:
     build: .
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
     container_name: email-processor
     restart: unless-stopped
     volumes:
